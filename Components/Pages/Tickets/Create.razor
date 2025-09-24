@@ -1,0 +1,242 @@
+@page "/tickets/create"
+@using EnterpriseTicketing.Components.Auth
+@using EnterpriseTicketing.Data
+@inject ApplicationDbContext Context
+@inject IUserSessionService SessionService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Create Ticket - Enterprise Ticketing</PageTitle>
+
+<AuthorizeView>
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/tickets">My Tickets</a></li>
+                        <li class="breadcrumb-item active">Create New Ticket</li>
+                    </ol>
+                </nav>
+                <h1 class="h3 mb-3">
+                    <i class="bi bi-plus-circle"></i>
+                    Create New Ticket
+                </h1>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <EditForm Model="@ticketModel" OnValidSubmit="@HandleSubmit" FormName="CreateTicketForm">
+                            <DataAnnotationsValidator />
+                            
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+                                </div>
+                            }
+
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                                        <InputText @bind-Value="ticketModel.Title" class="form-control" id="title" placeholder="Brief description of the issue" />
+                                        <ValidationMessage For="@(() => ticketModel.Title)" class="text-danger" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="category" class="form-label">Category</label>
+                                        <InputSelect @bind-Value="ticketModel.Category" class="form-select" id="category">
+                                            <option value="@TicketCategory.General">General</option>
+                                            <option value="@TicketCategory.Hardware">Hardware</option>
+                                            <option value="@TicketCategory.Software">Software</option>
+                                            <option value="@TicketCategory.Network">Network</option>
+                                            <option value="@TicketCategory.Security">Security</option>
+                                            <option value="@TicketCategory.Account">Account</option>
+                                        </InputSelect>
+                                        <ValidationMessage For="@(() => ticketModel.Category)" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="priority" class="form-label">Priority</label>
+                                <InputSelect @bind-Value="ticketModel.Priority" class="form-select" id="priority">
+                                    <option value="@TicketPriority.Low">Low - General inquiry or minor issue</option>
+                                    <option value="@TicketPriority.Medium">Medium - Standard issue affecting productivity</option>
+                                    <option value="@TicketPriority.High">High - Urgent issue affecting multiple users</option>
+                                    <option value="@TicketPriority.Critical">Critical - System down or security issue</option>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => ticketModel.Priority)" class="text-danger" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                                <InputTextArea @bind-Value="ticketModel.Description" class="form-control" id="description" rows="6" 
+                                             placeholder="Provide detailed information about the issue, including steps to reproduce, error messages, and any relevant context" />
+                                <ValidationMessage For="@(() => ticketModel.Description)" class="text-danger" />
+                                <div class="form-text">Be as specific as possible to help our support team resolve your issue quickly.</div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="/tickets" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Tickets
+                                </a>
+                                <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                                    @if (isSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Creating...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check-circle"></i>
+                                        <span>Create Ticket</span>
+                                    }
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            Tips for Creating a Good Ticket
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Use a clear, descriptive title
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Include steps to reproduce the issue
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Mention any error messages
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Select the appropriate priority
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Choose the correct category
+                            </li>
+                        </ul>
+                        
+                        <hr />
+                        
+                        <h6>Priority Guidelines:</h6>
+                        <small class="text-muted">
+                            <strong>Critical:</strong> System outages, security breaches<br />
+                            <strong>High:</strong> Urgent issues affecting multiple users<br />
+                            <strong>Medium:</strong> Standard issues affecting productivity<br />
+                            <strong>Low:</strong> General inquiries, minor issues
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</AuthorizeView>
+
+@code {
+    private CreateTicketModel ticketModel = new();
+    private string errorMessage = string.Empty;
+    private bool isSubmitting = false;
+    private User? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await SessionService.GetCurrentUserAsync();
+        
+        if (currentUser == null)
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            isSubmitting = true;
+            errorMessage = string.Empty;
+            StateHasChanged();
+
+            if (currentUser == null)
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+
+            var ticket = new Ticket
+            {
+                Title = ticketModel.Title,
+                Description = ticketModel.Description,
+                Priority = ticketModel.Priority,
+                Category = ticketModel.Category,
+                Status = TicketStatus.Open,
+                CreatedById = currentUser.Id,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            Context.Tickets.Add(ticket);
+            await Context.SaveChangesAsync();
+
+            // Add system message for ticket creation
+            var systemMessage = new ChatMessage
+            {
+                Message = $"Ticket created by {currentUser.FirstName} {currentUser.LastName}",
+                TicketId = ticket.Id,
+                SenderId = currentUser.Id,
+                SentAt = DateTime.UtcNow,
+                IsSystemMessage = true
+            };
+
+            Context.ChatMessages.Add(systemMessage);
+            await Context.SaveChangesAsync();
+
+            Navigation.NavigateTo($"/tickets/{ticket.Id}", true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred while creating the ticket. Please try again.";
+            // Log the exception in a real application
+            Console.WriteLine($"Error creating ticket: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    public class CreateTicketModel
+    {
+        [Required(ErrorMessage = "Title is required")]
+        [StringLength(255, ErrorMessage = "Title cannot exceed 255 characters")]
+        public string Title { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Description is required")]
+        [StringLength(4000, ErrorMessage = "Description cannot exceed 4000 characters")]
+        public string Description { get; set; } = string.Empty;
+
+        public TicketPriority Priority { get; set; } = TicketPriority.Medium;
+        public TicketCategory Category { get; set; } = TicketCategory.General;
+    }
+}

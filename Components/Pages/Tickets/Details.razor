@@ -1,0 +1,429 @@
+@page "/tickets/{TicketId:int}"
+@using EnterpriseTicketing.Components.Auth
+@using Microsoft.EntityFrameworkCore
+@using EnterpriseTicketing.Data
+@using Microsoft.AspNetCore.SignalR.Client
+@inject ApplicationDbContext Context
+@inject IUserSessionService SessionService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+<PageTitle>Ticket #@TicketId - Enterprise Ticketing</PageTitle>
+
+<AuthorizeView>
+    <div class="container-fluid">
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (ticket == null)
+        {
+            <div class="alert alert-warning">
+                <h4>Ticket Not Found</h4>
+                <p>The ticket you're looking for doesn't exist or you don't have permission to view it.</p>
+                <a href="/tickets" class="btn btn-primary">Back to Tickets</a>
+            </div>
+        }
+        else
+        {
+            <div class="row mb-4">
+                <div class="col">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/tickets">My Tickets</a></li>
+                            <li class="breadcrumb-item active">Ticket #@ticket.Id</li>
+                        </ol>
+                    </nav>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h1 class="h3 mb-2">@ticket.Title</h1>
+                            <div class="mb-2">
+                                <span class="badge @GetStatusBadgeClass(ticket.Status) me-2">@ticket.Status</span>
+                                <span class="badge @GetPriorityBadgeClass(ticket.Priority) me-2">@ticket.Priority</span>
+                                <span class="badge bg-light text-dark">@ticket.Category</span>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            @if (currentUser?.Role >= UserRole.Agent || (ticket.CreatedById == currentUser?.Id && ticket.Status != TicketStatus.Closed))
+                            {
+                                <div class="btn-group">
+                                    @if (currentUser?.Role >= UserRole.Agent)
+                                    {
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="() => UpdateStatus(TicketStatus.InProgress)" disabled="@(ticket.Status == TicketStatus.InProgress)">
+                                            In Progress
+                                        </button>
+                                        <button class="btn btn-outline-success btn-sm" @onclick="() => UpdateStatus(TicketStatus.Resolved)" disabled="@(ticket.Status == TicketStatus.Resolved)">
+                                            Resolve
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => UpdateStatus(TicketStatus.Closed)" disabled="@(ticket.Status == TicketStatus.Closed)">
+                                            Close
+                                        </button>
+                                    }
+                                    else if (ticket.Status == TicketStatus.Resolved)
+                                    {
+                                        <button class="btn btn-outline-warning btn-sm" @onclick="() => UpdateStatus(TicketStatus.Reopened)">
+                                            Reopen
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-info-circle"></i>
+                                Ticket Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">ID:</dt>
+                                <dd class="col-sm-8">#@ticket.Id</dd>
+                                
+                                <dt class="col-sm-4">Created:</dt>
+                                <dd class="col-sm-8">@ticket.CreatedAt.ToString("MMM dd, yyyy HH:mm")</dd>
+                                
+                                <dt class="col-sm-4">Updated:</dt>
+                                <dd class="col-sm-8">@ticket.UpdatedAt.ToString("MMM dd, yyyy HH:mm")</dd>
+                                
+                                <dt class="col-sm-4">Created by:</dt>
+                                <dd class="col-sm-8">@ticket.CreatedBy?.FirstName @ticket.CreatedBy?.LastName</dd>
+                                
+                                @if (ticket.AssignedTo != null)
+                                {
+                                    <dt class="col-sm-4">Assigned to:</dt>
+                                    <dd class="col-sm-8">@ticket.AssignedTo.FirstName @ticket.AssignedTo.LastName</dd>
+                                }
+                                
+                                @if (ticket.ResolvedAt.HasValue)
+                                {
+                                    <dt class="col-sm-4">Resolved:</dt>
+                                    <dd class="col-sm-8">@ticket.ResolvedAt.Value.ToString("MMM dd, yyyy HH:mm")</dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-card-text"></i>
+                                Description
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">@ticket.Description</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-chat-dots"></i>
+                                Conversation
+                                @if (isConnected)
+                                {
+                                    <span class="badge bg-success ms-2">Live</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary ms-2">Offline</span>
+                                }
+                            </h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="chat-messages" style="height: 400px; overflow-y: auto; padding: 1rem;" @ref="chatContainer">
+                                @if (chatMessages.Any())
+                                {
+                                    @foreach (var message in chatMessages)
+                                    {
+                                        <div class="mb-3 @(message.IsSystemMessage ? "text-center" : "")">
+                                            @if (message.IsSystemMessage)
+                                            {
+                                                <small class="text-muted fst-italic">
+                                                    <i class="bi bi-info-circle"></i>
+                                                    @message.Message - @message.SentAt.ToString("MMM dd, HH:mm")
+                                                </small>
+                                            }
+                                            else
+                                            {
+                                                <div class="d-flex @(message.SenderId == currentUser?.Id ? "justify-content-end" : "justify-content-start")">
+                                                    <div class="card @(message.SenderId == currentUser?.Id ? "bg-primary text-white" : "bg-light")" style="max-width: 70%;">
+                                                        <div class="card-body p-2">
+                                                            @if (message.SenderId != currentUser?.Id)
+                                                            {
+                                                                <h6 class="card-title mb-1">@message.Sender?.FirstName @message.Sender?.LastName</h6>
+                                                            }
+                                                            <p class="card-text mb-1">@message.Message</p>
+                                                            <small class="@(message.SenderId == currentUser?.Id ? "text-white-50" : "text-muted")">
+                                                                @message.SentAt.ToString("MMM dd, HH:mm")
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="text-center text-muted py-4">
+                                        <i class="bi bi-chat-dots" style="font-size: 2rem;"></i>
+                                        <p class="mt-2">No messages yet. Start the conversation!</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        @if (ticket.Status != TicketStatus.Closed)
+                        {
+                            <div class="card-footer">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" placeholder="Type your message..." 
+                                           @bind="newMessage" @onkeypress="@(async (e) => { if (e.Key == "Enter") await SendMessage(); })" />
+                                    <button class="btn btn-primary" type="button" @onclick="SendMessage" disabled="@(string.IsNullOrWhiteSpace(newMessage) || !isConnected)">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</AuthorizeView>
+
+@code {
+    [Parameter] public int TicketId { get; set; }
+
+    private bool isLoading = true;
+    private User? currentUser;
+    private Ticket? ticket;
+    private List<ChatMessage> chatMessages = new();
+    private string newMessage = string.Empty;
+    private HubConnection? hubConnection;
+    private bool isConnected = false;
+    private ElementReference chatContainer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await SessionService.GetCurrentUserAsync();
+        
+        if (currentUser == null)
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
+
+        await LoadTicket();
+        await LoadChatMessages();
+        await InitializeSignalR();
+        
+        isLoading = false;
+    }
+
+    private async Task LoadTicket()
+    {
+        try
+        {
+            if (currentUser == null) return;
+
+            var query = Context.Tickets
+                .Include(t => t.CreatedBy)
+                .Include(t => t.AssignedTo)
+                .AsQueryable();
+
+            // Users can only see their own tickets unless they're agents/admins
+            if (currentUser.Role < UserRole.Agent)
+            {
+                query = query.Where(t => t.CreatedById == currentUser.Id);
+            }
+
+            ticket = await query.FirstOrDefaultAsync(t => t.Id == TicketId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading ticket: {ex.Message}");
+        }
+    }
+
+    private async Task LoadChatMessages()
+    {
+        try
+        {
+            if (ticket == null) return;
+
+            chatMessages = await Context.ChatMessages
+                .Include(cm => cm.Sender)
+                .Where(cm => cm.TicketId == TicketId)
+                .OrderBy(cm => cm.SentAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading chat messages: {ex.Message}");
+        }
+    }
+
+    private async Task InitializeSignalR()
+    {
+        try
+        {
+            if (currentUser == null || ticket == null) return;
+
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+                .Build();
+
+            hubConnection.On<dynamic>("ReceiveMessage", async (message) =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    // Reload messages to get the latest from database
+                    await LoadChatMessages();
+                    StateHasChanged();
+                    await ScrollToBottom();
+                });
+            });
+
+            await hubConnection.StartAsync();
+            await hubConnection.SendAsync("JoinTicketGroup", TicketId, currentUser.Email);
+            isConnected = hubConnection.State == HubConnectionState.Connected;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing SignalR: {ex.Message}");
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(newMessage) || currentUser == null || hubConnection == null || ticket == null)
+            return;
+
+        try
+        {
+            await hubConnection.SendAsync("SendMessageToTicket", TicketId, newMessage.Trim(), currentUser.Email);
+            newMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending message: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateStatus(TicketStatus newStatus)
+    {
+        try
+        {
+            if (ticket == null || currentUser == null) return;
+
+            ticket.Status = newStatus;
+            ticket.UpdatedAt = DateTime.UtcNow;
+
+            if (newStatus == TicketStatus.Resolved || newStatus == TicketStatus.Closed)
+            {
+                ticket.ResolvedAt = DateTime.UtcNow;
+            }
+
+            Context.Tickets.Update(ticket);
+            await Context.SaveChangesAsync();
+
+            // Add system message
+            var systemMessage = new ChatMessage
+            {
+                Message = $"Ticket status changed to {newStatus} by {currentUser.FirstName} {currentUser.LastName}",
+                TicketId = TicketId,
+                SenderId = currentUser.Id,
+                SentAt = DateTime.UtcNow,
+                IsSystemMessage = true
+            };
+
+            Context.ChatMessages.Add(systemMessage);
+            await Context.SaveChangesAsync();
+
+            // Notify via SignalR
+            if (hubConnection != null)
+            {
+                await hubConnection.SendAsync("SendMessageToTicket", TicketId, systemMessage.Message, currentUser.Email);
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating ticket status: {ex.Message}");
+        }
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToBottom", chatContainer);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error scrolling to bottom: {ex.Message}");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ScrollToBottom();
+        }
+    }
+
+    private string GetStatusBadgeClass(TicketStatus status)
+    {
+        return status switch
+        {
+            TicketStatus.Open => "bg-primary",
+            TicketStatus.InProgress => "bg-warning",
+            TicketStatus.Resolved => "bg-success",
+            TicketStatus.Closed => "bg-secondary",
+            TicketStatus.Reopened => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityBadgeClass(TicketPriority priority)
+    {
+        return priority switch
+        {
+            TicketPriority.Low => "bg-secondary",
+            TicketPriority.Medium => "bg-info",
+            TicketPriority.High => "bg-warning",
+            TicketPriority.Critical => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            if (currentUser != null)
+            {
+                await hubConnection.SendAsync("LeaveTicketGroup", TicketId, currentUser.Email);
+            }
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

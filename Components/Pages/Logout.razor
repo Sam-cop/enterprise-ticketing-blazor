@@ -1,0 +1,11 @@
+@page "/logout"
+@inject IUserSessionService SessionService
+@inject NavigationManager Navigation
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await SessionService.ClearCurrentUserAsync();
+        Navigation.NavigateTo("/login", true);
+    }
+}

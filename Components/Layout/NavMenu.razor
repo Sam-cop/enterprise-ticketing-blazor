@@ -1,0 +1,108 @@
+@inject IUserSessionService SessionService
+@rendermode InteractiveServer
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            <i class="bi bi-ticket-perforated"></i>
+            Enterprise Ticketing
+        </a>
+        @if (currentUser != null)
+        {
+            <div class="d-flex align-items-center text-white">
+                <span class="me-3">
+                    Welcome, @currentUser.FirstName @currentUser.LastName
+                    @if (currentUser.Role == UserRole.Admin)
+                    {
+                        <span class="badge bg-danger ms-1">Admin</span>
+                    }
+                    else if (currentUser.Role == UserRole.Agent)
+                    {
+                        <span class="badge bg-warning ms-1">Agent</span>
+                    }
+                </span>
+                <a href="/logout" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        @if (currentUser != null)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                    <span class="bi bi-house-door-fill" aria-hidden="true"></span> Dashboard
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="tickets">
+                    <span class="bi bi-ticket-perforated" aria-hidden="true"></span> My Tickets
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="tickets/create">
+                    <span class="bi bi-plus-circle" aria-hidden="true"></span> Create Ticket
+                </NavLink>
+            </div>
+
+            @if (currentUser.Role >= UserRole.Agent)
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="tickets/assigned">
+                        <span class="bi bi-person-check" aria-hidden="true"></span> Assigned Tickets
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="tickets/all">
+                        <span class="bi bi-list-ul" aria-hidden="true"></span> All Tickets
+                    </NavLink>
+                </div>
+            }
+
+            @if (currentUser.Role == UserRole.Admin)
+            {
+                <hr class="mx-3 text-secondary" />
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/users">
+                        <span class="bi bi-people" aria-hidden="true"></span> Users
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/reports">
+                        <span class="bi bi-graph-up" aria-hidden="true"></span> Reports
+                    </NavLink>
+                </div>
+            }
+        }
+    </nav>
+</div>
+
+@code {
+    private User? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await SessionService.GetCurrentUserAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Refresh user data on first render
+            currentUser = await SessionService.GetCurrentUserAsync();
+            StateHasChanged();
+        }
+    }
+}
+

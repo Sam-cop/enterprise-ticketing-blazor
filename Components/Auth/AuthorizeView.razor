@@ -1,0 +1,54 @@
+@inject IUserSessionService SessionService
+@inject NavigationManager Navigation
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (currentUser != null)
+{
+    @if (RequiredRole == null || (int)currentUser.Role >= (int)RequiredRole)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <h4>Access Denied</h4>
+            <p>You don't have permission to access this resource.</p>
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-info">
+        <h4>Authentication Required</h4>
+        <p>Please log in to access this resource.</p>
+        <a href="/login" class="btn btn-primary">Login</a>
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public UserRole? RequiredRole { get; set; }
+
+    private User? currentUser;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await SessionService.GetCurrentUserAsync();
+        
+        if (currentUser == null)
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
+        
+        isLoading = false;
+    }
+}
