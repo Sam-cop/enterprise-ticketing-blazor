@@ -5,32 +5,32 @@
     <div class="container-fluid">
         <a class="navbar-brand" href="">
             <i class="bi bi-ticket-perforated"></i>
-            Enterprise Ticketing
+            سیستم تیکتینگ سازمانی
         </a>
         @if (currentUser != null)
         {
             <div class="d-flex align-items-center text-white">
                 <span class="me-3">
-                    Welcome, @currentUser.FirstName @currentUser.LastName
+                    خوش آمدید، @currentUser.FirstName @currentUser.LastName
                     @if (currentUser.Role == UserRole.Admin)
                     {
-                        <span class="badge bg-danger ms-1">Admin</span>
+                        <span class="badge bg-danger ms-1">مدیر</span>
                     }
                     else if (currentUser.Role == UserRole.Manager)
                     {
-                        <span class="badge bg-info ms-1">Manager</span>
+                        <span class="badge bg-info ms-1">سرپرست</span>
                     }
                     else if (currentUser.Role == UserRole.HelpDesk)
                     {
-                        <span class="badge bg-warning ms-1">Help Desk</span>
+                        <span class="badge bg-warning ms-1">پشتیبانی</span>
                     }
                     else if (currentUser.Role == UserRole.Client)
                     {
-                        <span class="badge bg-secondary ms-1">Client</span>
+                        <span class="badge bg-secondary ms-1">مشتری</span>
                     }
                 </span>
                 <a href="/logout" class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-box-arrow-right"></i> Logout
+                    <i class="bi bi-box-arrow-left"></i> خروج
                 </a>
             </div>
         }
@@ -45,19 +45,19 @@
         {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                    <span class="bi bi-house-door-fill" aria-hidden="true"></span> Dashboard
+                    <span class="bi bi-house-door-fill" aria-hidden="true"></span> داشبورد
                 </NavLink>
             </div>
 
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="tickets">
-                    <span class="bi bi-ticket-perforated" aria-hidden="true"></span> My Tickets
+                    <span class="bi bi-ticket-perforated" aria-hidden="true"></span> تیکت‌های من
                 </NavLink>
             </div>
 
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="tickets/create">
-                    <span class="bi bi-plus-circle" aria-hidden="true"></span> Create Ticket
+                    <span class="bi bi-plus-circle" aria-hidden="true"></span> ایجاد تیکت
                 </NavLink>
             </div>
 
@@ -65,13 +65,13 @@
             {
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="tickets/assigned">
-                        <span class="bi bi-person-check" aria-hidden="true"></span> Assigned Tickets
+                        <span class="bi bi-person-check" aria-hidden="true"></span> تیکت‌های تخصیص یافته
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="tickets/all">
-                        <span class="bi bi-list-ul" aria-hidden="true"></span> All Tickets
+                        <span class="bi bi-list-ul" aria-hidden="true"></span> تمام تیکت‌ها
                     </NavLink>
                 </div>
             }
@@ -80,7 +80,7 @@
             {
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="tickets/client-tickets">
-                        <span class="bi bi-people-fill" aria-hidden="true"></span> Client Tickets
+                        <span class="bi bi-people-fill" aria-hidden="true"></span> تیکت‌های مشتریان
                     </NavLink>
                 </div>
             }
@@ -90,13 +90,19 @@
                 <hr class="mx-3 text-secondary" />
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="admin/users">
-                        <span class="bi bi-people" aria-hidden="true"></span> Users
+                        <span class="bi bi-people" aria-hidden="true"></span> کاربران
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="admin/reports">
-                        <span class="bi bi-graph-up" aria-hidden="true"></span> Reports
+                        <span class="bi bi-graph-up" aria-hidden="true"></span> گزارشات
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/notifications">
+                        <span class="bi bi-bell" aria-hidden="true"></span> ارسال اعلان
                     </NavLink>
                 </div>
             }

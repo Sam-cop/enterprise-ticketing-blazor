@@ -12,6 +12,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChatMessage> ChatMessages { get; set; }
     public DbSet<ChatAttachment> ChatAttachments { get; set; }
     public DbSet<TicketAttachment> TicketAttachments { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -97,6 +98,30 @@ public class ApplicationDbContext : DbContext
                 .WithMany(t => t.Attachments)
                 .HasForeignKey(e => e.TicketId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Notification configuration
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Message).HasMaxLength(4000);
+
+            // Relationships
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.SentBy)
+                .WithMany()
+                .HasForeignKey(e => e.SentByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.RelatedTicket)
+                .WithMany()
+                .HasForeignKey(e => e.RelatedTicketId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Seed admin user

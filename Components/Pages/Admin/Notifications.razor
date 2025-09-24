@@ -1,0 +1,248 @@
+@page "/admin/notifications"
+@using EnterpriseTicketing.Components.Auth
+@using EnterpriseTicketing.Data
+@using EnterpriseTicketing.Services
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+@inject IUserSessionService SessionService
+@inject INotificationService NotificationService
+@rendermode InteractiveServer
+
+<PageTitle>اعلانات - سیستم تیکتینگ سازمانی</PageTitle>
+
+<CustomAuthorizeView RequiredRole="@UserRole.Admin">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">داشبورد</a></li>
+                        <li class="breadcrumb-item active">اعلانات</li>
+                    </ol>
+                </nav>
+                <h1 class="h3 mb-3">
+                    <i class="bi bi-bell"></i>
+                    ارسال اعلان
+                </h1>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">ارسال اعلان جدید</h5>
+                        
+                        @if (!string.IsNullOrEmpty(message))
+                        {
+                            <div class="alert @alertClass" role="alert">
+                                @message
+                            </div>
+                        }
+
+                        <EditForm Model="notificationModel" OnValidSubmit="SendNotification">
+                            <div class="mb-3">
+                                <label class="form-label">نوع گیرنده</label>
+                                <InputSelect @bind-Value="notificationModel.RecipientType" class="form-select">
+                                    <option value="user">کاربر خاص</option>
+                                    <option value="role">نقش خاص</option>
+                                    <option value="all">همه کاربران</option>
+                                </InputSelect>
+                            </div>
+
+                            @if (notificationModel.RecipientType == "user")
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">انتخاب کاربر</label>
+                                    <InputSelect @bind-Value="notificationModel.UserId" class="form-select">
+                                        <option value="">-- انتخاب کاربر --</option>
+                                        @foreach (var user in users)
+                                        {
+                                            <option value="@user.Id">@user.FirstName @user.LastName (@user.Email)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            }
+                            else if (notificationModel.RecipientType == "role")
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">انتخاب نقش</label>
+                                    <InputSelect @bind-Value="notificationModel.Role" class="form-select">
+                                        <option value="">-- انتخاب نقش --</option>
+                                        <option value="@UserRole.Client">مشتری</option>
+                                        <option value="@UserRole.User">کاربر</option>
+                                        <option value="@UserRole.HelpDesk">پشتیبانی</option>
+                                        <option value="@UserRole.Manager">سرپرست</option>
+                                        <option value="@UserRole.Admin">مدیر</option>
+                                    </InputSelect>
+                                </div>
+                            }
+
+                            <div class="mb-3">
+                                <label class="form-label">نوع اعلان</label>
+                                <InputSelect @bind-Value="notificationModel.Type" class="form-select">
+                                    <option value="@NotificationType.Info">اطلاعات</option>
+                                    <option value="@NotificationType.Success">موفقیت</option>
+                                    <option value="@NotificationType.Warning">هشدار</option>
+                                    <option value="@NotificationType.Error">خطا</option>
+                                    <option value="@NotificationType.AdminMessage">پیام مدیر</option>
+                                </InputSelect>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">عنوان</label>
+                                <InputText @bind-Value="notificationModel.Title" class="form-control" placeholder="عنوان اعلان را وارد کنید" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">پیام</label>
+                                <InputTextArea @bind-Value="notificationModel.Message" class="form-control" rows="4" placeholder="متن پیام را وارد کنید" />
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary" disabled="@isSending">
+                                    @if (isSending)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        <span>در حال ارسال...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-send"></i>
+                                        <span>ارسال اعلان</span>
+                                    }
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">راهنما</h5>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-info-circle text-info"></i> <strong>اطلاعات:</strong> پیام‌های عمومی</li>
+                            <li><i class="bi bi-check-circle text-success"></i> <strong>موفقیت:</strong> تأیید عملیات</li>
+                            <li><i class="bi bi-exclamation-triangle text-warning"></i> <strong>هشدار:</strong> اخطارهای مهم</li>
+                            <li><i class="bi bi-x-circle text-danger"></i> <strong>خطا:</strong> پیام‌های خطا</li>
+                            <li><i class="bi bi-person-badge text-primary"></i> <strong>پیام مدیر:</strong> پیام‌های رسمی</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</CustomAuthorizeView>
+
+@code {
+    private NotificationModel notificationModel = new();
+    private List<User> users = new();
+    private bool isSending = false;
+    private string message = "";
+    private string alertClass = "";
+    private User? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await SessionService.GetCurrentUserAsync();
+        users = await Context.Users.Where(u => u.IsActive).OrderBy(u => u.FirstName).ToListAsync();
+    }
+
+    private async Task SendNotification()
+    {
+        try
+        {
+            isSending = true;
+            message = "";
+
+            if (string.IsNullOrWhiteSpace(notificationModel.Title) || string.IsNullOrWhiteSpace(notificationModel.Message))
+            {
+                message = "لطفاً عنوان و پیام را وارد کنید.";
+                alertClass = "alert-danger";
+                return;
+            }
+
+            switch (notificationModel.RecipientType)
+            {
+                case "user":
+                    if (notificationModel.UserId.HasValue)
+                    {
+                        await NotificationService.SendNotificationAsync(
+                            notificationModel.UserId.Value,
+                            notificationModel.Title,
+                            notificationModel.Message,
+                            notificationModel.Type,
+                            null,
+                            currentUser?.Id
+                        );
+                        message = "اعلان با موفقیت ارسال شد.";
+                        alertClass = "alert-success";
+                    }
+                    else
+                    {
+                        message = "لطفاً یک کاربر انتخاب کنید.";
+                        alertClass = "alert-danger";
+                    }
+                    break;
+
+                case "role":
+                    if (notificationModel.Role.HasValue)
+                    {
+                        await NotificationService.SendNotificationToRoleAsync(
+                            notificationModel.Role.Value,
+                            notificationModel.Title,
+                            notificationModel.Message,
+                            notificationModel.Type,
+                            currentUser?.Id
+                        );
+                        message = "اعلان به همه کاربران با نقش انتخاب شده ارسال شد.";
+                        alertClass = "alert-success";
+                    }
+                    else
+                    {
+                        message = "لطفاً یک نقش انتخاب کنید.";
+                        alertClass = "alert-danger";
+                    }
+                    break;
+
+                case "all":
+                    await NotificationService.SendNotificationToAllUsersAsync(
+                        notificationModel.Title,
+                        notificationModel.Message,
+                        notificationModel.Type,
+                        currentUser?.Id
+                    );
+                    message = "اعلان به همه کاربران ارسال شد.";
+                    alertClass = "alert-success";
+                    break;
+            }
+
+            // Reset form after successful send
+            if (alertClass == "alert-success")
+            {
+                notificationModel = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"خطا در ارسال اعلان: {ex.Message}";
+            alertClass = "alert-danger";
+        }
+        finally
+        {
+            isSending = false;
+        }
+    }
+
+    public class NotificationModel
+    {
+        public string RecipientType { get; set; } = "user";
+        public int? UserId { get; set; }
+        public UserRole? Role { get; set; }
+        public NotificationType Type { get; set; } = NotificationType.Info;
+        public string Title { get; set; } = "";
+        public string Message { get; set; } = "";
+    }
+}
