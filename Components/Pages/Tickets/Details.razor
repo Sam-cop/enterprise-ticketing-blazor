@@ -50,10 +50,10 @@
                             </div>
                         </div>
                         <div class="text-end">
-                            @if (currentUser?.Role >= UserRole.Agent || (ticket.CreatedById == currentUser?.Id && ticket.Status != TicketStatus.Closed))
+                            @if (currentUser?.Role >= UserRole.HelpDesk || (ticket.CreatedById == currentUser?.Id && ticket.Status != TicketStatus.Closed))
                             {
                                 <div class="btn-group">
-                                    @if (currentUser?.Role >= UserRole.Agent)
+                                    @if (currentUser?.Role >= UserRole.HelpDesk)
                                     {
                                         <button class="btn btn-outline-primary btn-sm" @onclick="() => UpdateStatus(TicketStatus.InProgress)" disabled="@(ticket.Status == TicketStatus.InProgress)">
                                             In Progress
@@ -248,7 +248,7 @@
                 .AsQueryable();
 
             // Users can only see their own tickets unless they're agents/admins
-            if (currentUser.Role < UserRole.Agent)
+            if (currentUser.Role < UserRole.HelpDesk)
             {
                 query = query.Where(t => t.CreatedById == currentUser.Id);
             }

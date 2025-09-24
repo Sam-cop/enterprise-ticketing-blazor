@@ -1,0 +1,479 @@
+@page "/admin/reports"
+@using EnterpriseTicketing.Components.Auth
+@using EnterpriseTicketing.Data
+@using Microsoft.EntityFrameworkCore
+@using OfficeOpenXml
+@using System.Globalization
+@inject ApplicationDbContext Context
+@inject IUserSessionService SessionService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Reports - Enterprise Ticketing</PageTitle>
+
+<CustomAuthorizeView RequiredRole="@UserRole.Admin">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Reports</li>
+                    </ol>
+                </nav>
+                <h1 class="h3 mb-3">
+                    <i class="bi bi-graph-up"></i>
+                    Reports
+                </h1>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Ticket Reports</h5>
+                        <p class="card-text">Generate detailed reports on ticket performance and resolution times.</p>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="fromDate" class="form-label">From Date (Jalali)</label>
+                                <input type="text" class="form-control" id="fromDateJalali" @bind="fromDateJalali" 
+                                       placeholder="1403/01/01" @bind:after="OnFromDateChanged" />
+                                <small class="form-text text-muted">Gregorian: @fromDate.ToString("yyyy-MM-dd")</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="toDate" class="form-label">To Date (Jalali)</label>
+                                <input type="text" class="form-control" id="toDateJalali" @bind="toDateJalali" 
+                                       placeholder="1403/12/29" @bind:after="OnToDateChanged" />
+                                <small class="form-text text-muted">Gregorian: @toDate.ToString("yyyy-MM-dd")</small>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" @onclick="GenerateReport" disabled="@isGenerating">
+                                @if (isGenerating)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="bi bi-file-earmark-excel"></i> Generate Excel Report
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="PreviewData" disabled="@isGenerating">
+                                <i class="bi bi-eye"></i> Preview Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Report Contents</h5>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check text-success"></i> Ticket resolution times</li>
+                            <li><i class="bi bi-check text-success"></i> Helpdesk performance metrics</li>
+                            <li><i class="bi bi-check text-success"></i> Ticket status statistics</li>
+                            <li><i class="bi bi-check text-success"></i> Time spent on each ticket</li>
+                            <li><i class="bi bi-check text-success"></i> Closed tickets per helpdesk agent</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (previewData != null && previewData.Any())
+        {
+            <div class="row mt-4">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Preview Data (@previewData.Count tickets)</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Ticket ID</th>
+                                            <th>Title</th>
+                                            <th>Status</th>
+                                            <th>Created</th>
+                                            <th>Resolved</th>
+                                            <th>Resolution Time</th>
+                                            <th>Assigned To</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var ticket in previewData.Take(10))
+                                        {
+                                            <tr>
+                                                <td>#@ticket.Id</td>
+                                                <td>@(ticket.Title.Length > 30 ? ticket.Title.Substring(0, 30) + "..." : ticket.Title)</td>
+                                                <td>
+                                                    <span class="badge @GetStatusBadgeClass(ticket.Status)">
+                                                        @ticket.Status
+                                                    </span>
+                                                </td>
+                                                <td>@ticket.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                                <td>@(ticket.ResolvedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                                <td>@GetResolutionTime(ticket)</td>
+                                                <td>@(ticket.AssignedTo?.FirstName + " " + ticket.AssignedTo?.LastName ?? "Unassigned")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            @if (previewData.Count > 10)
+                            {
+                                <p class="text-muted">Showing first 10 of @previewData.Count tickets...</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (reportStats != null)
+        {
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Tickets</h5>
+                            <h2>@reportStats.TotalTickets</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <h5 class="card-title">Resolved</h5>
+                            <h2>@reportStats.ResolvedTickets</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <h5 class="card-title">Avg Resolution Time</h5>
+                            <h2>@reportStats.AverageResolutionHours.ToString("F1")h</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <h5 class="card-title">Active Agents</h5>
+                            <h2>@reportStats.ActiveAgents</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (reportStats.AgentStats.Any())
+            {
+                <div class="row mt-4">
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Agent Performance</h5>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Agent</th>
+                                                <th>Tickets Closed</th>
+                                                <th>Avg Resolution Time</th>
+                                                <th>Performance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var agent in reportStats.AgentStats.OrderByDescending(a => a.TicketsClosed))
+                                            {
+                                                <tr>
+                                                    <td>@agent.AgentName</td>
+                                                    <td>@agent.TicketsClosed</td>
+                                                    <td>@agent.AverageResolutionHours.ToString("F1")h</td>
+                                                    <td>
+                                                        <div class="progress" style="height: 20px;">
+                                                            <div class="progress-bar @GetPerformanceClass(agent.TicketsClosed, reportStats.AgentStats.Max(a => a.TicketsClosed))" 
+                                                                 role="progressbar" 
+                                                                 style="width: @GetPerformancePercentage(agent.TicketsClosed, reportStats.AgentStats.Max(a => a.TicketsClosed))%"
+                                                                 aria-valuenow="@agent.TicketsClosed" 
+                                                                 aria-valuemin="0" 
+                                                                 aria-valuemax="@reportStats.AgentStats.Max(a => a.TicketsClosed)">
+                                                                @agent.TicketsClosed
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</CustomAuthorizeView>
+
+@code {
+    private DateTime fromDate = DateTime.Now.AddMonths(-1);
+    private DateTime toDate = DateTime.Now;
+    private string fromDateJalali = "";
+    private string toDateJalali = "";
+    private bool isGenerating = false;
+    private List<Ticket>? previewData;
+    private ReportStatistics? reportStats;
+
+    protected override void OnInitialized()
+    {
+        // Initialize Jalali dates
+        var persianCalendar = new PersianCalendar();
+        fromDateJalali = $"{persianCalendar.GetYear(fromDate)}/{persianCalendar.GetMonth(fromDate):00}/{persianCalendar.GetDayOfMonth(fromDate):00}";
+        toDateJalali = $"{persianCalendar.GetYear(toDate)}/{persianCalendar.GetMonth(toDate):00}/{persianCalendar.GetDayOfMonth(toDate):00}";
+    }
+
+    private void OnFromDateChanged()
+    {
+        if (TryParsePersianDate(fromDateJalali, out var gregorianDate))
+        {
+            fromDate = gregorianDate;
+        }
+    }
+
+    private void OnToDateChanged()
+    {
+        if (TryParsePersianDate(toDateJalali, out var gregorianDate))
+        {
+            toDate = gregorianDate;
+        }
+    }
+
+    private bool TryParsePersianDate(string persianDateString, out DateTime gregorianDate)
+    {
+        gregorianDate = DateTime.MinValue;
+        
+        if (string.IsNullOrWhiteSpace(persianDateString))
+            return false;
+
+        var parts = persianDateString.Split('/');
+        if (parts.Length != 3)
+            return false;
+
+        if (!int.TryParse(parts[0], out var year) || 
+            !int.TryParse(parts[1], out var month) || 
+            !int.TryParse(parts[2], out var day))
+            return false;
+
+        try
+        {
+            var persianCalendar = new PersianCalendar();
+            gregorianDate = persianCalendar.ToDateTime(year, month, day, 0, 0, 0, 0);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task PreviewData()
+    {
+        try
+        {
+            isGenerating = true;
+            
+            previewData = await Context.Tickets
+                .Include(t => t.AssignedTo)
+                .Include(t => t.CreatedBy)
+                .Where(t => t.CreatedAt >= fromDate && t.CreatedAt <= toDate.AddDays(1))
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            await CalculateStatistics();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error previewing data: {ex.Message}");
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+
+    private async Task GenerateReport()
+    {
+        try
+        {
+            isGenerating = true;
+            
+            var tickets = await Context.Tickets
+                .Include(t => t.AssignedTo)
+                .Include(t => t.CreatedBy)
+                .Where(t => t.CreatedAt >= fromDate && t.CreatedAt <= toDate.AddDays(1))
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            var excelData = GenerateExcelReport(tickets);
+            
+            // Download the file
+            await JSRuntime.InvokeVoidAsync("downloadFile", 
+                "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + Convert.ToBase64String(excelData),
+                $"TicketReport_{fromDateJalali.Replace("/", "")}_to_{toDateJalali.Replace("/", "")}.xlsx");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating report: {ex.Message}");
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+
+    private async Task CalculateStatistics()
+    {
+        if (previewData == null) return;
+
+        var resolvedTickets = previewData.Where(t => t.Status == TicketStatus.Resolved || t.Status == TicketStatus.Closed).ToList();
+        var totalResolutionTime = resolvedTickets
+            .Where(t => t.ResolvedAt.HasValue)
+            .Sum(t => (t.ResolvedAt!.Value - t.CreatedAt).TotalHours);
+
+        var agentStats = previewData
+            .Where(t => t.AssignedTo != null && (t.Status == TicketStatus.Resolved || t.Status == TicketStatus.Closed))
+            .GroupBy(t => new { t.AssignedTo!.Id, t.AssignedTo.FirstName, t.AssignedTo.LastName })
+            .Select(g => new AgentStatistic
+            {
+                AgentName = $"{g.Key.FirstName} {g.Key.LastName}",
+                TicketsClosed = g.Count(),
+                AverageResolutionHours = g.Where(t => t.ResolvedAt.HasValue)
+                    .Average(t => (t.ResolvedAt!.Value - t.CreatedAt).TotalHours)
+            })
+            .ToList();
+
+        reportStats = new ReportStatistics
+        {
+            TotalTickets = previewData.Count,
+            ResolvedTickets = resolvedTickets.Count,
+            AverageResolutionHours = resolvedTickets.Any() ? totalResolutionTime / resolvedTickets.Count : 0,
+            ActiveAgents = agentStats.Count,
+            AgentStats = agentStats
+        };
+    }
+
+    private byte[] GenerateExcelReport(List<Ticket> tickets)
+    {
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        
+        using var package = new ExcelPackage();
+        var worksheet = package.Workbook.Worksheets.Add("Ticket Report");
+
+        // Headers
+        worksheet.Cells[1, 1].Value = "Ticket ID";
+        worksheet.Cells[1, 2].Value = "Title";
+        worksheet.Cells[1, 3].Value = "Status";
+        worksheet.Cells[1, 4].Value = "Priority";
+        worksheet.Cells[1, 5].Value = "Created Date";
+        worksheet.Cells[1, 6].Value = "Resolved Date";
+        worksheet.Cells[1, 7].Value = "Resolution Time (Hours)";
+        worksheet.Cells[1, 8].Value = "Created By";
+        worksheet.Cells[1, 9].Value = "Assigned To";
+        worksheet.Cells[1, 10].Value = "Department";
+
+        // Data
+        int row = 2;
+        foreach (var ticket in tickets)
+        {
+            worksheet.Cells[row, 1].Value = ticket.Id;
+            worksheet.Cells[row, 2].Value = ticket.Title;
+            worksheet.Cells[row, 3].Value = ticket.Status.ToString();
+            worksheet.Cells[row, 4].Value = ticket.Priority.ToString();
+            worksheet.Cells[row, 5].Value = ticket.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+            worksheet.Cells[row, 6].Value = ticket.ResolvedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
+            
+            if (ticket.ResolvedAt.HasValue)
+            {
+                worksheet.Cells[row, 7].Value = (ticket.ResolvedAt.Value - ticket.CreatedAt).TotalHours;
+            }
+            
+            worksheet.Cells[row, 8].Value = $"{ticket.CreatedBy?.FirstName} {ticket.CreatedBy?.LastName}";
+            worksheet.Cells[row, 9].Value = $"{ticket.AssignedTo?.FirstName} {ticket.AssignedTo?.LastName}";
+            worksheet.Cells[row, 10].Value = ticket.CreatedBy?.Department ?? "";
+            
+            row++;
+        }
+
+        // Auto-fit columns
+        worksheet.Cells.AutoFitColumns();
+
+        // Format headers
+        using (var range = worksheet.Cells[1, 1, 1, 10])
+        {
+            range.Style.Font.Bold = true;
+            range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+            range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        }
+
+        return package.GetAsByteArray();
+    }
+
+    private string GetResolutionTime(Ticket ticket)
+    {
+        if (!ticket.ResolvedAt.HasValue)
+            return "-";
+
+        var timeSpan = ticket.ResolvedAt.Value - ticket.CreatedAt;
+        return $"{timeSpan.TotalHours:F1}h";
+    }
+
+    private string GetStatusBadgeClass(TicketStatus status)
+    {
+        return status switch
+        {
+            TicketStatus.Open => "bg-primary",
+            TicketStatus.InProgress => "bg-warning",
+            TicketStatus.Resolved => "bg-success",
+            TicketStatus.Closed => "bg-secondary",
+            TicketStatus.Reopened => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPerformanceClass(int tickets, int maxTickets)
+    {
+        var percentage = (double)tickets / maxTickets;
+        return percentage switch
+        {
+            >= 0.8 => "bg-success",
+            >= 0.6 => "bg-info",
+            >= 0.4 => "bg-warning",
+            _ => "bg-danger"
+        };
+    }
+
+    private double GetPerformancePercentage(int tickets, int maxTickets)
+    {
+        return maxTickets > 0 ? (double)tickets / maxTickets * 100 : 0;
+    }
+
+    public class ReportStatistics
+    {
+        public int TotalTickets { get; set; }
+        public int ResolvedTickets { get; set; }
+        public double AverageResolutionHours { get; set; }
+        public int ActiveAgents { get; set; }
+        public List<AgentStatistic> AgentStats { get; set; } = new();
+    }
+
+    public class AgentStatistic
+    {
+        public string AgentName { get; set; } = "";
+        public int TicketsClosed { get; set; }
+        public double AverageResolutionHours { get; set; }
+    }
+}

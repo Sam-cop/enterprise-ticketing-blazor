@@ -24,7 +24,12 @@ public class User
 
     public bool IsActive { get; set; } = true;
 
+    // Manager-Client relationship
+    public int? ManagerId { get; set; }
+
     // Navigation properties
+    public virtual User? Manager { get; set; }
+    public virtual ICollection<User> Clients { get; set; } = new List<User>();
     public virtual ICollection<Ticket> CreatedTickets { get; set; } = new List<Ticket>();
     public virtual ICollection<Ticket> AssignedTickets { get; set; } = new List<Ticket>();
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
@@ -32,7 +37,9 @@ public class User
 
 public enum UserRole
 {
-    User = 0,
-    Agent = 1,
-    Admin = 2
+    Client = 0,
+    User = 1,
+    HelpDesk = 2,
+    Manager = 3,
+    Admin = 4
 }
