@@ -26,6 +26,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FirstName).HasMaxLength(100);
             entity.Property(e => e.LastName).HasMaxLength(100);
             entity.Property(e => e.Department).HasMaxLength(100);
+
+            // Manager-Client relationship
+            entity.HasOne(e => e.Manager)
+                .WithMany(u => u.Clients)
+                .HasForeignKey(e => e.ManagerId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Ticket configuration

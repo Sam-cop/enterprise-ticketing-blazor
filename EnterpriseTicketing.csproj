@@ -21,6 +21,8 @@
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="System.DirectoryServices.Protocols" Version="8.0.1" />
+    <PackageReference Include="EPPlus" Version="7.0.0" />
+    <PackageReference Include="System.Globalization.Extensions" Version="4.3.0" />
   </ItemGroup>
 
 </Project>

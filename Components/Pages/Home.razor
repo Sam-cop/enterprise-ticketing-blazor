@@ -159,7 +159,7 @@
                                 <a href="/tickets" class="btn btn-outline-primary">
                                     <i class="bi bi-list-ul"></i> View My Tickets
                                 </a>
-                                @if (currentUser?.Role >= UserRole.Agent)
+                                @if (currentUser?.Role >= UserRole.HelpDesk)
                                 {
                                     <a href="/tickets/assigned" class="btn btn-outline-secondary">
                                         <i class="bi bi-person-check"></i> Assigned to Me
@@ -203,7 +203,7 @@
             if (currentUser == null) return;
 
             // Load ticket counts
-            if (currentUser.Role >= UserRole.Agent)
+            if (currentUser.Role >= UserRole.HelpDesk)
             {
                 // Agents and admins see all tickets
                 openTicketsCount = await Context.Tickets.CountAsync(t => t.Status == TicketStatus.Open);

@@ -1,0 +1,384 @@
+@page "/tickets/client-tickets"
+@using EnterpriseTicketing.Components.Auth
+@using EnterpriseTicketing.Data
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+@inject IUserSessionService SessionService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Client Tickets - Enterprise Ticketing</PageTitle>
+
+<CustomAuthorizeView RequiredRole="@UserRole.Manager">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Client Tickets</li>
+                    </ol>
+                </nav>
+                <h1 class="h3 mb-3">
+                    <i class="bi bi-people-fill"></i>
+                    Client Tickets
+                </h1>
+                <p class="text-muted">Manage tickets from your assigned clients</p>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (!clients.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> You don't have any assigned clients yet. Contact your administrator to assign clients to your management.
+            </div>
+        }
+        else
+        {
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="Search tickets..." 
+                               @bind="searchTerm" @oninput="OnSearchChanged" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="clientFilter" @bind:after="OnFilterChanged">
+                        <option value="">All Clients</option>
+                        @foreach (var client in clients)
+                        {
+                            <option value="@client.Id">@client.FirstName @client.LastName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" @bind="statusFilter" @bind:after="OnFilterChanged">
+                        <option value="">All Statuses</option>
+                        <option value="Open">Open</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Closed">Closed</option>
+                        <option value="Reopened">Reopened</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="priorityFilter" @bind:after="OnFilterChanged">
+                        <option value="">All Priorities</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                </div>
+            </div>
+
+            @if (filteredTickets.Any())
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Title</th>
+                                        <th>Client</th>
+                                        <th>Status</th>
+                                        <th>Priority</th>
+                                        <th>Category</th>
+                                        <th>Created</th>
+                                        <th>Assigned To</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ticket in filteredTickets)
+                                    {
+                                        <tr>
+                                            <td><strong>#@ticket.Id</strong></td>
+                                            <td>
+                                                <a href="/tickets/@ticket.Id" class="text-decoration-none">
+                                                    @ticket.Title
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-person-circle me-1"></i>
+                                                    @ticket.CreatedBy.FirstName @ticket.CreatedBy.LastName
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetStatusBadgeClass(ticket.Status)">
+                                                    @ticket.Status.ToString()
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetPriorityBadgeClass(ticket.Priority)">
+                                                    @ticket.Priority.ToString()
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark">
+                                                    @ticket.Category.ToString()
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <small>@ticket.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                            </td>
+                                            <td>
+                                                @if (ticket.AssignedTo != null)
+                                                {
+                                                    <span class="badge bg-info">
+                                                        @ticket.AssignedTo.FirstName @ticket.AssignedTo.LastName
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Unassigned</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a href="/tickets/@ticket.Id" class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-eye"></i> View
+                                                    </a>
+                                                    @if (ticket.Status != TicketStatus.Closed)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-success" @onclick="() => AddComment(ticket.Id)">
+                                                            <i class="bi bi-chat-dots"></i> Comment
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagination could be added here if needed -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="text-muted">Showing @filteredTickets.Count of @tickets.Count tickets</span>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No tickets found matching your criteria.
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Quick Comment Modal -->
+    @if (commentingTicketId.HasValue)
+    {
+        <div class="modal fade show d-block" tabindex="-1" role="dialog" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Comment to Ticket #@commentingTicketId</h5>
+                        <button type="button" class="btn-close" @onclick="CancelComment"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Your Comment</label>
+                            <textarea class="form-control" rows="4" @bind="commentText" 
+                                      placeholder="Enter your comment or question..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CancelComment">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="SendComment" disabled="@isSendingComment">
+                            @if (isSendingComment)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-send"></i> Send Comment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</CustomAuthorizeView>
+
+@code {
+    private List<Ticket> tickets = new List<Ticket>();
+    private List<Ticket> filteredTickets = new List<Ticket>();
+    private List<User> clients = new List<User>();
+    private bool isLoading = true;
+    private bool isSendingComment = false;
+    private string searchTerm = string.Empty;
+    private string clientFilter = string.Empty;
+    private string statusFilter = string.Empty;
+    private string priorityFilter = string.Empty;
+    private int? commentingTicketId = null;
+    private string commentText = string.Empty;
+    private User? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await SessionService.GetCurrentUserAsync();
+        if (currentUser?.Role != UserRole.Manager)
+        {
+            Navigation.NavigateTo("/", true);
+            return;
+        }
+
+        await LoadClientTickets();
+    }
+
+    private async Task LoadClientTickets()
+    {
+        try
+        {
+            isLoading = true;
+
+            // Get all clients assigned to this manager
+            clients = await Context.Users
+                .Where(u => u.ManagerId == currentUser!.Id)
+                .OrderBy(u => u.FirstName)
+                .ThenBy(u => u.LastName)
+                .ToListAsync();
+
+            if (clients.Any())
+            {
+                var clientIds = clients.Select(c => c.Id).ToList();
+
+                // Get all tickets created by the manager's clients
+                tickets = await Context.Tickets
+                    .Include(t => t.CreatedBy)
+                    .Include(t => t.AssignedTo)
+                    .Where(t => clientIds.Contains(t.CreatedById))
+                    .OrderByDescending(t => t.CreatedAt)
+                    .ToListAsync();
+            }
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading client tickets: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void OnFilterChanged()
+    {
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredTickets = tickets.Where(t =>
+            (string.IsNullOrEmpty(searchTerm) || 
+             t.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             t.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(clientFilter) || t.CreatedById.ToString() == clientFilter) &&
+            (string.IsNullOrEmpty(statusFilter) || t.Status.ToString() == statusFilter) &&
+            (string.IsNullOrEmpty(priorityFilter) || t.Priority.ToString() == priorityFilter)
+        ).ToList();
+    }
+
+    private void AddComment(int ticketId)
+    {
+        commentingTicketId = ticketId;
+        commentText = string.Empty;
+    }
+
+    private void CancelComment()
+    {
+        commentingTicketId = null;
+        commentText = string.Empty;
+    }
+
+    private async Task SendComment()
+    {
+        if (!commentingTicketId.HasValue || string.IsNullOrWhiteSpace(commentText) || currentUser == null)
+            return;
+
+        try
+        {
+            isSendingComment = true;
+
+            var chatMessage = new ChatMessage
+            {
+                TicketId = commentingTicketId.Value,
+                SenderId = currentUser.Id,
+                Message = commentText.Trim(),
+                SentAt = DateTime.UtcNow
+            };
+
+            Context.ChatMessages.Add(chatMessage);
+            await Context.SaveChangesAsync();
+
+            // Update ticket's UpdatedAt timestamp
+            var ticket = await Context.Tickets.FindAsync(commentingTicketId.Value);
+            if (ticket != null)
+            {
+                ticket.UpdatedAt = DateTime.UtcNow;
+                await Context.SaveChangesAsync();
+            }
+
+            // Close modal and refresh data
+            CancelComment();
+            await LoadClientTickets();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending comment: {ex.Message}");
+        }
+        finally
+        {
+            isSendingComment = false;
+        }
+    }
+
+    private string GetStatusBadgeClass(TicketStatus status)
+    {
+        return status switch
+        {
+            TicketStatus.Open => "bg-primary",
+            TicketStatus.InProgress => "bg-warning",
+            TicketStatus.Resolved => "bg-success",
+            TicketStatus.Closed => "bg-secondary",
+            TicketStatus.Reopened => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityBadgeClass(TicketPriority priority)
+    {
+        return priority switch
+        {
+            TicketPriority.Low => "bg-secondary",
+            TicketPriority.Medium => "bg-info",
+            TicketPriority.High => "bg-warning",
+            TicketPriority.Critical => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}

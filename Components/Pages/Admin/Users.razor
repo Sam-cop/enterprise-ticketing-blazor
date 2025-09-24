@@ -1,0 +1,326 @@
+@page "/admin/users"
+@using EnterpriseTicketing.Components.Auth
+@using EnterpriseTicketing.Data
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+@inject IUserSessionService SessionService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>User Management - Enterprise Ticketing</PageTitle>
+
+<CustomAuthorizeView RequiredRole="@UserRole.Admin">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                        <li class="breadcrumb-item active">User Management</li>
+                    </ol>
+                </nav>
+                <h1 class="h3 mb-3">
+                    <i class="bi bi-people"></i>
+                    User Management
+                </h1>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="Search users..." 
+                               @bind="searchTerm" @oninput="OnSearchChanged" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="roleFilter" @bind:after="OnFilterChanged">
+                        <option value="">All Roles</option>
+                        <option value="Client">Client</option>
+                        <option value="User">User</option>
+                        <option value="HelpDesk">Help Desk</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="statusFilter" @bind:after="OnFilterChanged">
+                        <option value="">All Status</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            @if (filteredUsers.Any())
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Department</th>
+                                        <th>Role</th>
+                                        <th>Manager</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in filteredUsers)
+                                    {
+                                        <tr>
+                                            <td><strong>#@user.Id</strong></td>
+                                            <td>@user.FirstName @user.LastName</td>
+                                            <td>@user.Email</td>
+                                            <td>@user.Department</td>
+                                            <td>
+                                                <span class="badge @GetRoleBadgeClass(user.Role)">
+                                                    @user.Role.ToString()
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (user.Manager != null)
+                                                {
+                                                    <text>@user.Manager.FirstName @user.Manager.LastName</text>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge @(user.IsActive ? "bg-success" : "bg-secondary")">
+                                                    @(user.IsActive ? "Active" : "Inactive")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" @onclick="() => EditUser(user)">
+                                                    <i class="bi bi-pencil"></i> Edit
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No users found matching your criteria.
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Edit User Modal -->
+    @if (editingUser != null)
+    {
+        <div class="modal fade show d-block" tabindex="-1" role="dialog" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit User - @editingUser.FirstName @editingUser.LastName</h5>
+                        <button type="button" class="btn-close" @onclick="CancelEdit"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="editingUser" OnValidSubmit="SaveUser">
+                            <DataAnnotationsValidator />
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Role</label>
+                                <InputSelect @bind-Value="editingUser.Role" class="form-select">
+                                    <option value="@UserRole.Client">Client</option>
+                                    <option value="@UserRole.User">User</option>
+                                    <option value="@UserRole.HelpDesk">Help Desk</option>
+                                    <option value="@UserRole.Manager">Manager</option>
+                                    <option value="@UserRole.Admin">Admin</option>
+                                </InputSelect>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Manager</label>
+                                <InputSelect @bind-Value="editingUser.ManagerId" class="form-select">
+                                    <option value="">No Manager</option>
+                                    @foreach (var manager in managers)
+                                    {
+                                        <option value="@manager.Id">@manager.FirstName @manager.LastName</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="editingUser.IsActive" class="form-check-input" id="isActive" />
+                                    <label class="form-check-label" for="isActive">
+                                        Active
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="button" class="btn btn-secondary me-2" @onclick="CancelEdit">Cancel</button>
+                                <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                    }
+                                    Save Changes
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</CustomAuthorizeView>
+
+@code {
+    private List<User> users = new List<User>();
+    private List<User> filteredUsers = new List<User>();
+    private List<User> managers = new List<User>();
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string searchTerm = string.Empty;
+    private string roleFilter = string.Empty;
+    private string statusFilter = string.Empty;
+    private User? editingUser = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            isLoading = true;
+            users = await Context.Users
+                .Include(u => u.Manager)
+                .OrderBy(u => u.FirstName)
+                .ThenBy(u => u.LastName)
+                .ToListAsync();
+
+            managers = users.Where(u => u.Role == UserRole.Manager || u.Role == UserRole.Admin).ToList();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            // Log error
+            Console.WriteLine($"Error loading users: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void OnFilterChanged()
+    {
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredUsers = users.Where(u =>
+            (string.IsNullOrEmpty(searchTerm) || 
+             u.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             u.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(roleFilter) || u.Role.ToString() == roleFilter) &&
+            (string.IsNullOrEmpty(statusFilter) || u.IsActive.ToString() == statusFilter)
+        ).ToList();
+    }
+
+    private void EditUser(User user)
+    {
+        editingUser = new User
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Department = user.Department,
+            Role = user.Role,
+            ManagerId = user.ManagerId,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt
+        };
+    }
+
+    private void CancelEdit()
+    {
+        editingUser = null;
+    }
+
+    private async Task SaveUser()
+    {
+        if (editingUser == null) return;
+
+        try
+        {
+            isSaving = true;
+            var userToUpdate = await Context.Users.FindAsync(editingUser.Id);
+            if (userToUpdate != null)
+            {
+                userToUpdate.Role = editingUser.Role;
+                userToUpdate.ManagerId = editingUser.ManagerId;
+                userToUpdate.IsActive = editingUser.IsActive;
+
+                await Context.SaveChangesAsync();
+                await LoadUsers();
+                editingUser = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error
+            Console.WriteLine($"Error saving user: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string GetRoleBadgeClass(UserRole role)
+    {
+        return role switch
+        {
+            UserRole.Admin => "bg-danger",
+            UserRole.Manager => "bg-info",
+            UserRole.HelpDesk => "bg-warning",
+            UserRole.User => "bg-primary",
+            UserRole.Client => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+}
