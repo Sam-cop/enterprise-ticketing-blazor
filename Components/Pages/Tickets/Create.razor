@@ -6,7 +6,7 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>Create Ticket - Enterprise Ticketing</PageTitle>
+<PageTitle>ایجاد تیکت - سیستم تیکتینگ سازمانی</PageTitle>
 
 <CustomAuthorizeView>
     <div class="container-fluid">
@@ -14,13 +14,13 @@
             <div class="col">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="/tickets">My Tickets</a></li>
-                        <li class="breadcrumb-item active">Create New Ticket</li>
+                        <li class="breadcrumb-item"><a href="/tickets">تیکت‌های من</a></li>
+                        <li class="breadcrumb-item active">ایجاد تیکت جدید</li>
                     </ol>
                 </nav>
                 <h1 class="h3 mb-3">
                     <i class="bi bi-plus-circle"></i>
-                    Create New Ticket
+                    ایجاد تیکت جدید
                 </h1>
             </div>
         </div>
@@ -42,21 +42,21 @@
                             <div class="row">
                                 <div class="col-md-8">
                                     <div class="mb-3">
-                                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
-                                        <InputText @bind-Value="ticketModel.Title" class="form-control" id="title" placeholder="Brief description of the issue" />
+                                        <label for="title" class="form-label">عنوان <span class="text-danger">*</span></label>
+                                        <InputText @bind-Value="ticketModel.Title" class="form-control" id="title" placeholder="توضیح مختصری از مشکل" />
                                         <ValidationMessage For="@(() => ticketModel.Title)" class="text-danger" />
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="mb-3">
-                                        <label for="category" class="form-label">Category</label>
+                                        <label for="category" class="form-label">دسته‌بندی</label>
                                         <InputSelect @bind-Value="ticketModel.Category" class="form-select" id="category">
-                                            <option value="@TicketCategory.General">General</option>
-                                            <option value="@TicketCategory.Hardware">Hardware</option>
-                                            <option value="@TicketCategory.Software">Software</option>
-                                            <option value="@TicketCategory.Network">Network</option>
-                                            <option value="@TicketCategory.Security">Security</option>
-                                            <option value="@TicketCategory.Account">Account</option>
+                                            <option value="@TicketCategory.General">عمومی</option>
+                                            <option value="@TicketCategory.Hardware">سخت‌افزار</option>
+                                            <option value="@TicketCategory.Software">نرم‌افزار</option>
+                                            <option value="@TicketCategory.Network">شبکه</option>
+                                            <option value="@TicketCategory.Security">امنیت</option>
+                                            <option value="@TicketCategory.Account">حساب کاربری</option>
                                         </InputSelect>
                                         <ValidationMessage For="@(() => ticketModel.Category)" class="text-danger" />
                                     </div>
@@ -64,38 +64,38 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="priority" class="form-label">Priority</label>
+                                <label for="priority" class="form-label">اولویت</label>
                                 <InputSelect @bind-Value="ticketModel.Priority" class="form-select" id="priority">
-                                    <option value="@TicketPriority.Low">Low - General inquiry or minor issue</option>
-                                    <option value="@TicketPriority.Medium">Medium - Standard issue affecting productivity</option>
-                                    <option value="@TicketPriority.High">High - Urgent issue affecting multiple users</option>
-                                    <option value="@TicketPriority.Critical">Critical - System down or security issue</option>
+                                    <option value="@TicketPriority.Low">کم - سوال عمومی یا مشکل جزئی</option>
+                                    <option value="@TicketPriority.Medium">متوسط - مشکل استاندارد که بر بهره‌وری تأثیر می‌گذارد</option>
+                                    <option value="@TicketPriority.High">زیاد - مشکل فوری که روی چندین کاربر تأثیر می‌گذارد</option>
+                                    <option value="@TicketPriority.Critical">بحرانی - سیستم قطع یا مشکل امنیتی</option>
                                 </InputSelect>
                                 <ValidationMessage For="@(() => ticketModel.Priority)" class="text-danger" />
                             </div>
 
                             <div class="mb-3">
-                                <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                                <label for="description" class="form-label">توضیحات <span class="text-danger">*</span></label>
                                 <InputTextArea @bind-Value="ticketModel.Description" class="form-control" id="description" rows="6" 
-                                             placeholder="Provide detailed information about the issue, including steps to reproduce, error messages, and any relevant context" />
+                                             placeholder="اطلاعات تفصیلی درباره مشکل، شامل مراحل بازتولید، پیام‌های خطا و هر متن مرتبط دیگری ارائه دهید" />
                                 <ValidationMessage For="@(() => ticketModel.Description)" class="text-danger" />
-                                <div class="form-text">Be as specific as possible to help our support team resolve your issue quickly.</div>
+                                <div class="form-text">تا حد امکان دقیق باشید تا تیم پشتیبانی ما بتواند مشکل شما را سریع حل کند.</div>
                             </div>
 
                             <div class="d-flex justify-content-between">
                                 <a href="/tickets" class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-left"></i> Back to Tickets
+                                    <i class="bi bi-arrow-right"></i> بازگشت به تیکت‌ها
                                 </a>
                                 <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
                                     @if (isSubmitting)
                                     {
                                         <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                        <span>Creating...</span>
+                                        <span>در حال ایجاد...</span>
                                     }
                                     else
                                     {
                                         <i class="bi bi-check-circle"></i>
-                                        <span>Create Ticket</span>
+                                        <span>ایجاد تیکت</span>
                                     }
                                 </button>
                             </div>
@@ -109,41 +109,41 @@
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="bi bi-info-circle"></i>
-                            Tips for Creating a Good Ticket
+                            نکاتی برای ایجاد تیکت مفید
                         </h5>
                     </div>
                     <div class="card-body">
                         <ul class="list-unstyled">
                             <li class="mb-2">
                                 <i class="bi bi-check-circle text-success"></i>
-                                Use a clear, descriptive title
+                                از عنوان واضح و توصیفی استفاده کنید
                             </li>
                             <li class="mb-2">
                                 <i class="bi bi-check-circle text-success"></i>
-                                Include steps to reproduce the issue
+                                مراحل بازتولید مشکل را شامل کنید
                             </li>
                             <li class="mb-2">
                                 <i class="bi bi-check-circle text-success"></i>
-                                Mention any error messages
+                                پیام‌های خطا را ذکر کنید
                             </li>
                             <li class="mb-2">
                                 <i class="bi bi-check-circle text-success"></i>
-                                Select the appropriate priority
+                                اولویت مناسب را انتخاب کنید
                             </li>
                             <li class="mb-2">
                                 <i class="bi bi-check-circle text-success"></i>
-                                Choose the correct category
+                                دسته‌بندی صحیح را انتخاب کنید
                             </li>
                         </ul>
                         
                         <hr />
                         
-                        <h6>Priority Guidelines:</h6>
+                        <h6>راهنمای اولویت:</h6>
                         <small class="text-muted">
-                            <strong>Critical:</strong> System outages, security breaches<br />
-                            <strong>High:</strong> Urgent issues affecting multiple users<br />
-                            <strong>Medium:</strong> Standard issues affecting productivity<br />
-                            <strong>Low:</strong> General inquiries, minor issues
+                            <strong>بحرانی:</strong> قطعی سیستم، نقض امنیت<br />
+                            <strong>زیاد:</strong> مسائل فوری که روی چندین کاربر تأثیر می‌گذارد<br />
+                            <strong>متوسط:</strong> مسائل استاندارد که بر بهره‌وری تأثیر می‌گذارد<br />
+                            <strong>کم:</strong> سوالات عمومی، مسائل جزئی
                         </small>
                     </div>
                 </div>
