@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
+using Microsoft.AspNetCore.Components.Authorization;
 using EnterpriseTicketing.Data;
 using EnterpriseTicketing.Models;
 
@@ -7,17 +7,14 @@ namespace EnterpriseTicketing.Services;
 
 public class UserSessionService : IUserSessionService
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ApplicationDbContext _context;
+    private readonly CustomAuthenticationStateProvider _authStateProvider;
     private readonly ILogger<UserSessionService> _logger;
 
     public UserSessionService(
-        IHttpContextAccessor httpContextAccessor,
-        ApplicationDbContext context,
+        AuthenticationStateProvider authStateProvider,
         ILogger<UserSessionService> logger)
     {
-        _httpContextAccessor = httpContextAccessor;
-        _context = context;
+        _authStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
         _logger = logger;
     }
 
@@ -25,21 +22,11 @@ public class UserSessionService : IUserSessionService
     {
         try
         {
-            var session = _httpContextAccessor.HttpContext?.Session;
-            if (session == null) return null;
-
-            var userJson = session.GetString("CurrentUser");
-            if (string.IsNullOrEmpty(userJson)) return null;
-
-            var userData = JsonConvert.DeserializeObject<dynamic>(userJson);
-            if (userData == null) return null;
-
-            int userId = userData.Id;
-            return await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            return await _authStateProvider.GetCurrentUserAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting current user from session");
+            _logger.LogError(ex, "Error getting current user");
             return null;
         }
     }
@@ -48,24 +35,11 @@ public class UserSessionService : IUserSessionService
     {
         try
         {
-            var session = _httpContextAccessor.HttpContext?.Session;
-            if (session == null) return;
-
-            var userData = new
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Role = user.Role
-            };
-
-            session.SetString("CurrentUser", JsonConvert.SerializeObject(userData));
-            await Task.CompletedTask;
+            await _authStateProvider.MarkUserAsAuthenticatedAsync(user);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting current user in session");
+            _logger.LogError(ex, "Error setting current user");
         }
     }
 
@@ -73,13 +47,11 @@ public class UserSessionService : IUserSessionService
     {
         try
         {
-            var session = _httpContextAccessor.HttpContext?.Session;
-            session?.Remove("CurrentUser");
-            await Task.CompletedTask;
+            await _authStateProvider.MarkUserAsLoggedOutAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing current user from session");
+            _logger.LogError(ex, "Error clearing current user");
         }
     }
 

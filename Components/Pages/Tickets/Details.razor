@@ -12,7 +12,7 @@
 
 <PageTitle>Ticket #@TicketId - Enterprise Ticketing</PageTitle>
 
-<AuthorizeView>
+<CustomAuthorizeView>
     <div class="container-fluid">
         @if (isLoading)
         {
@@ -205,7 +205,7 @@
             </div>
         }
     </div>
-</AuthorizeView>
+</CustomAuthorizeView>
 
 @code {
     [Parameter] public int TicketId { get; set; }

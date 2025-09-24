@@ -1,5 +1,7 @@
-@inject IUserSessionService SessionService
+@implements IDisposable
+@inject IUserSessionService SessionService  
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 @if (isLoading)
 {
@@ -41,14 +43,35 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadCurrentUser();
+        
+        // Subscribe to authentication state changes
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        isLoading = true;
         currentUser = await SessionService.GetCurrentUserAsync();
         
-        if (currentUser == null)
+        // Only redirect to login if we're not already on the login page
+        if (currentUser == null && !Navigation.Uri.Contains("/login"))
         {
             Navigation.NavigateTo("/login", true);
             return;
         }
         
         isLoading = false;
+        StateHasChanged();
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        await LoadCurrentUser();
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
     }
 }
