@@ -211,7 +211,7 @@
             Context.ChatMessages.Add(systemMessage);
             await Context.SaveChangesAsync();
 
-            Navigation.NavigateTo($"/tickets/{ticket.Id}", true);
+            Navigation.NavigateTo($"/tickets/{ticket.Id}", false);
         }
         catch (Exception ex)
         {
