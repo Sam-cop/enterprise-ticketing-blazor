@@ -1,0 +1,122 @@
+@page "/login"
+@inject ILdapAuthenticationService AuthService
+@inject IUserSessionService SessionService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<div class="container-fluid vh-100">
+    <div class="row h-100">
+        <div class="col-md-4 offset-md-4 d-flex align-items-center">
+            <div class="card w-100 shadow">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <h2 class="card-title text-primary">Enterprise Ticketing</h2>
+                        <p class="text-muted">Sign in to your account</p>
+                    </div>
+
+                    <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin" FormName="LoginForm">
+                        <DataAnnotationsValidator />
+                        
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText @bind-Value="loginModel.Email" class="form-control" id="email" placeholder="Enter your email" />
+                            <ValidationMessage For="@(() => loginModel.Email)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <InputText @bind-Value="loginModel.Password" type="password" class="form-control" id="password" placeholder="Enter your password" />
+                            <ValidationMessage For="@(() => loginModel.Password)" class="text-danger" />
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Signing in...</span>
+                                }
+                                else
+                                {
+                                    <span>Sign In</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <div class="mt-4 text-center">
+                        <small class="text-muted">
+                            Demo credentials: admin@mail.com / !123!QWEqwe
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            StateHasChanged();
+
+            var user = await AuthService.AuthenticateAsync(loginModel.Email, loginModel.Password);
+            
+            if (user != null)
+            {
+                await SessionService.SetCurrentUserAsync(user);
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                errorMessage = "Invalid email or password. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred during login. Please try again.";
+            // Log the exception in a real application
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is already logged in
+        if (await SessionService.IsAuthenticatedAsync())
+        {
+            Navigation.NavigateTo("/", true);
+        }
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email address")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters long")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

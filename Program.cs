@@ -16,6 +16,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Add authentication services
 builder.Services.AddScoped<ILdapAuthenticationService, LdapAuthenticationService>();
+builder.Services.AddScoped<IUserSessionService, UserSessionService>();
+builder.Services.AddHttpContextAccessor();
 
 // Add SignalR
 builder.Services.AddSignalR();

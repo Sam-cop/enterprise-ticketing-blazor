@@ -1,7 +1,272 @@
-﻿@page "/"
+@page "/"
+@using EnterpriseTicketing.Components.Auth
+@using Microsoft.EntityFrameworkCore
+@using EnterpriseTicketing.Data
+@inject ApplicationDbContext Context
+@inject IUserSessionService SessionService
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Dashboard - Enterprise Ticketing</PageTitle>
 
-<h1>Hello, world!</h1>
+<AuthorizeView>
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col">
+                <h1 class="h3 mb-3">
+                    <i class="bi bi-speedometer2"></i>
+                    Dashboard
+                </h1>
+            </div>
+        </div>
 
-Welcome to your new app.
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Open Tickets</h5>
+                                    <h2 class="mb-0">@openTicketsCount</h2>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-ticket-perforated fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">In Progress</h5>
+                                    <h2 class="mb-0">@inProgressTicketsCount</h2>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-clock fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Resolved</h5>
+                                    <h2 class="mb-0">@resolvedTicketsCount</h2>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-check-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">My Tickets</h5>
+                                    <h2 class="mb-0">@myTicketsCount</h2>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-person-check fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Recent Tickets</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (recentTickets.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Title</th>
+                                                <th>Status</th>
+                                                <th>Priority</th>
+                                                <th>Created</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var ticket in recentTickets)
+                                            {
+                                                <tr style="cursor: pointer;" onclick="@(() => NavigateToTicket(ticket.Id))">
+                                                    <td>#@ticket.Id</td>
+                                                    <td>@ticket.Title</td>
+                                                    <td>
+                                                        <span class="badge @GetStatusBadgeClass(ticket.Status)">
+                                                            @ticket.Status
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge @GetPriorityBadgeClass(ticket.Priority)">
+                                                            @ticket.Priority
+                                                        </span>
+                                                    </td>
+                                                    <td>@ticket.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No tickets found.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="/tickets/create" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle"></i> Create New Ticket
+                                </a>
+                                <a href="/tickets" class="btn btn-outline-primary">
+                                    <i class="bi bi-list-ul"></i> View My Tickets
+                                </a>
+                                @if (currentUser?.Role >= UserRole.Agent)
+                                {
+                                    <a href="/tickets/assigned" class="btn btn-outline-secondary">
+                                        <i class="bi bi-person-check"></i> Assigned to Me
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</AuthorizeView>
+
+@code {
+    private bool isLoading = true;
+    private User? currentUser;
+    private int openTicketsCount;
+    private int inProgressTicketsCount;
+    private int resolvedTicketsCount;
+    private int myTicketsCount;
+    private List<Ticket> recentTickets = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await SessionService.GetCurrentUserAsync();
+        
+        if (currentUser == null)
+        {
+            return;
+        }
+
+        await LoadDashboardData();
+        isLoading = false;
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            if (currentUser == null) return;
+
+            // Load ticket counts
+            if (currentUser.Role >= UserRole.Agent)
+            {
+                // Agents and admins see all tickets
+                openTicketsCount = await Context.Tickets.CountAsync(t => t.Status == TicketStatus.Open);
+                inProgressTicketsCount = await Context.Tickets.CountAsync(t => t.Status == TicketStatus.InProgress);
+                resolvedTicketsCount = await Context.Tickets.CountAsync(t => t.Status == TicketStatus.Resolved);
+                
+                recentTickets = await Context.Tickets
+                    .Include(t => t.CreatedBy)
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Take(10)
+                    .ToListAsync();
+            }
+            else
+            {
+                // Regular users see only their tickets
+                openTicketsCount = await Context.Tickets.CountAsync(t => t.CreatedById == currentUser.Id && t.Status == TicketStatus.Open);
+                inProgressTicketsCount = await Context.Tickets.CountAsync(t => t.CreatedById == currentUser.Id && t.Status == TicketStatus.InProgress);
+                resolvedTicketsCount = await Context.Tickets.CountAsync(t => t.CreatedById == currentUser.Id && t.Status == TicketStatus.Resolved);
+                
+                recentTickets = await Context.Tickets
+                    .Include(t => t.CreatedBy)
+                    .Where(t => t.CreatedById == currentUser.Id)
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Take(10)
+                    .ToListAsync();
+            }
+
+            myTicketsCount = await Context.Tickets.CountAsync(t => t.CreatedById == currentUser.Id);
+        }
+        catch (Exception ex)
+        {
+            // Log error in production
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+    }
+
+    private void NavigateToTicket(int ticketId)
+    {
+        // Navigation will be implemented when ticket detail page is created
+    }
+
+    private string GetStatusBadgeClass(TicketStatus status)
+    {
+        return status switch
+        {
+            TicketStatus.Open => "bg-primary",
+            TicketStatus.InProgress => "bg-warning",
+            TicketStatus.Resolved => "bg-success",
+            TicketStatus.Closed => "bg-secondary",
+            TicketStatus.Reopened => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityBadgeClass(TicketPriority priority)
+    {
+        return priority switch
+        {
+            TicketPriority.Low => "bg-secondary",
+            TicketPriority.Medium => "bg-info",
+            TicketPriority.High => "bg-warning",
+            TicketPriority.Critical => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}
