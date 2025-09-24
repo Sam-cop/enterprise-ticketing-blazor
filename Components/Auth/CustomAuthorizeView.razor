@@ -1,4 +1,4 @@
-@inject IUserSessionService SessionService
+@inject IUserSessionService SessionService  
 @inject NavigationManager Navigation
 
 @if (isLoading)
@@ -41,14 +41,29 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        currentUser = await SessionService.GetCurrentUserAsync();
-        
-        if (currentUser == null)
+        await LoadCurrentUser();
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try 
         {
-            Navigation.NavigateTo("/login", true);
-            return;
+            isLoading = true;
+            currentUser = await SessionService.GetCurrentUserAsync();
+            
+            // Only redirect to login if we're not already on the login page
+            if (currentUser == null && !Navigation.Uri.Contains("/login"))
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+            
+            isLoading = false;
         }
-        
-        isLoading = false;
+        catch (Exception)
+        {
+            // Swallow exceptions to prevent loops
+            isLoading = false;
+        }
     }
 }

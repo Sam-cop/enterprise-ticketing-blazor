@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components.Authorization;
 using EnterpriseTicketing.Components;
 using EnterpriseTicketing.Data;
 using EnterpriseTicketing.Services;
@@ -26,19 +27,14 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add authentication services
 builder.Services.AddScoped<ILdapAuthenticationService, LdapAuthenticationService>();
 builder.Services.AddScoped<IUserSessionService, UserSessionService>();
-builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<CustomAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthenticationStateProvider>());
+
+// Add authorization services
+builder.Services.AddAuthorizationCore();
 
 // Add SignalR
 builder.Services.AddSignalR();
-
-// Add session support for authentication
-builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession(options =>
-{
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-});
 
 var app = builder.Build();
 
@@ -52,9 +48,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
-// Add session middleware
-app.UseSession();
 
 app.UseAntiforgery();
 
