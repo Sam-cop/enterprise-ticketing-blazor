@@ -33,6 +33,7 @@ public class User
     public virtual ICollection<Ticket> CreatedTickets { get; set; } = new List<Ticket>();
     public virtual ICollection<Ticket> AssignedTickets { get; set; } = new List<Ticket>();
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }
 
 public enum UserRole

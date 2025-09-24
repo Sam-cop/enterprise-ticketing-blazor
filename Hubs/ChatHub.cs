@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using EnterpriseTicketing.Data;
 using EnterpriseTicketing.Models;
+using EnterpriseTicketing.Services;
 
 namespace EnterpriseTicketing.Hubs;
 
@@ -9,11 +10,13 @@ public class ChatHub : Hub
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<ChatHub> _logger;
+    private readonly INotificationService _notificationService;
 
-    public ChatHub(ApplicationDbContext context, ILogger<ChatHub> logger)
+    public ChatHub(ApplicationDbContext context, ILogger<ChatHub> logger, INotificationService notificationService)
     {
         _context = context;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     public async Task JoinTicketGroup(int ticketId, string userEmail)
@@ -76,6 +79,25 @@ public class ChatHub : Hub
                 SenderEmail = user.Email,
                 IsSystemMessage = chatMessage.IsSystemMessage
             });
+
+            // Send notification to ticket participants (except sender)
+            var ticketParticipants = new List<int>();
+            if (ticket.CreatedById != user.Id)
+                ticketParticipants.Add(ticket.CreatedById);
+            if (ticket.AssignedToId.HasValue && ticket.AssignedToId.Value != user.Id)
+                ticketParticipants.Add(ticket.AssignedToId.Value);
+
+            foreach (var participantId in ticketParticipants.Distinct())
+            {
+                await _notificationService.SendNotificationAsync(
+                    participantId,
+                    "پیام جدید در تیکت",
+                    $"پیام جدید در تیکت #{ticket.Id}: {ticket.Title}",
+                    NotificationType.NewMessage,
+                    ticket.Id,
+                    user.Id
+                );
+            }
 
             _logger.LogInformation("Message sent to ticket {TicketId} by {SenderEmail}", ticketId, senderEmail);
         }
