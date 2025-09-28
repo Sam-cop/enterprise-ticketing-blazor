@@ -9,7 +9,7 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<PageTitle>Reports - Enterprise Ticketing</PageTitle>
+<PageTitle>گزارشات - سیستم تیکتینگ سازمانی</PageTitle>
 
 <CustomAuthorizeView RequiredRole="@UserRole.Admin">
     <div class="container-fluid">
@@ -17,13 +17,13 @@
             <div class="col">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
-                        <li class="breadcrumb-item active">Reports</li>
+                        <li class="breadcrumb-item"><a href="/">داشبورد</a></li>
+                        <li class="breadcrumb-item active">گزارشات</li>
                     </ol>
                 </nav>
                 <h1 class="h3 mb-3">
                     <i class="bi bi-graph-up"></i>
-                    Reports
+                    گزارشات
                 </h1>
             </div>
         </div>
@@ -32,21 +32,21 @@
             <div class="col-md-8">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Ticket Reports</h5>
-                        <p class="card-text">Generate detailed reports on ticket performance and resolution times.</p>
+                        <h5 class="card-title">گزارش تیکت‌ها</h5>
+                        <p class="card-text">تولید گزارش‌های تفصیلی از عملکرد تیکت‌ها و زمان‌های حل مسئله.</p>
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="fromDate" class="form-label">From Date (Jalali)</label>
+                                <label for="fromDate" class="form-label">از تاریخ (جلالی)</label>
                                 <input type="text" class="form-control" id="fromDateJalali" @bind="fromDateJalali" 
                                        placeholder="1403/01/01" @bind:after="OnFromDateChanged" />
-                                <small class="form-text text-muted">Gregorian: @fromDate.ToString("yyyy-MM-dd")</small>
+                                <small class="form-text text-muted">میلادی: @fromDate.ToString("yyyy-MM-dd")</small>
                             </div>
                             <div class="col-md-6">
-                                <label for="toDate" class="form-label">To Date (Jalali)</label>
+                                <label for="toDate" class="form-label">تا تاریخ (جلالی)</label>
                                 <input type="text" class="form-control" id="toDateJalali" @bind="toDateJalali" 
                                        placeholder="1403/12/29" @bind:after="OnToDateChanged" />
-                                <small class="form-text text-muted">Gregorian: @toDate.ToString("yyyy-MM-dd")</small>
+                                <small class="form-text text-muted">میلادی: @toDate.ToString("yyyy-MM-dd")</small>
                             </div>
                         </div>
 
@@ -56,10 +56,10 @@
                                 {
                                     <span class="spinner-border spinner-border-sm me-2"></span>
                                 }
-                                <i class="bi bi-file-earmark-excel"></i> Generate Excel Report
+                                <i class="bi bi-file-earmark-excel"></i> تولید گزارش اکسل
                             </button>
                             <button class="btn btn-outline-secondary" @onclick="PreviewData" disabled="@isGenerating">
-                                <i class="bi bi-eye"></i> Preview Data
+                                <i class="bi bi-eye"></i> پیش‌نمایش داده‌ها
                             </button>
                         </div>
                     </div>
@@ -69,13 +69,13 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Report Contents</h5>
+                        <h5 class="card-title">محتویات گزارش</h5>
                         <ul class="list-unstyled">
-                            <li><i class="bi bi-check text-success"></i> Ticket resolution times</li>
-                            <li><i class="bi bi-check text-success"></i> Helpdesk performance metrics</li>
-                            <li><i class="bi bi-check text-success"></i> Ticket status statistics</li>
-                            <li><i class="bi bi-check text-success"></i> Time spent on each ticket</li>
-                            <li><i class="bi bi-check text-success"></i> Closed tickets per helpdesk agent</li>
+                            <li><i class="bi bi-check text-success"></i> زمان‌های حل تیکت</li>
+                            <li><i class="bi bi-check text-success"></i> معیارهای عملکرد پشتیبانی</li>
+                            <li><i class="bi bi-check text-success"></i> آمار وضعیت تیکت‌ها</li>
+                            <li><i class="bi bi-check text-success"></i> زمان صرف شده روی هر تیکت</li>
+                            <li><i class="bi bi-check text-success"></i> تیکت‌های بسته شده توسط هر کارشناس</li>
                         </ul>
                     </div>
                 </div>
@@ -88,18 +88,18 @@
                 <div class="col">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Preview Data (@previewData.Count tickets)</h5>
+                            <h5 class="card-title">پیش‌نمایش داده‌ها (@previewData.Count تیکت)</h5>
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
                                         <tr>
-                                            <th>Ticket ID</th>
-                                            <th>Title</th>
-                                            <th>Status</th>
-                                            <th>Created</th>
-                                            <th>Resolved</th>
-                                            <th>Resolution Time</th>
-                                            <th>Assigned To</th>
+                                            <th>شناسه تیکت</th>
+                                            <th>عنوان</th>
+                                            <th>وضعیت</th>
+                                            <th>ایجاد شده</th>
+                                            <th>حل شده</th>
+                                            <th>زمان حل</th>
+                                            <th>تخصیص یافته به</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -124,7 +124,7 @@
                             </div>
                             @if (previewData.Count > 10)
                             {
-                                <p class="text-muted">Showing first 10 of @previewData.Count tickets...</p>
+                                <p class="text-muted">نمایش ۱۰ مورد اول از @previewData.Count تیکت...</p>
                             }
                         </div>
                     </div>
@@ -138,7 +138,7 @@
                 <div class="col-md-3">
                     <div class="card text-white bg-primary">
                         <div class="card-body">
-                            <h5 class="card-title">Total Tickets</h5>
+                            <h5 class="card-title">کل تیکت‌ها</h5>
                             <h2>@reportStats.TotalTickets</h2>
                         </div>
                     </div>
@@ -146,7 +146,7 @@
                 <div class="col-md-3">
                     <div class="card text-white bg-success">
                         <div class="card-body">
-                            <h5 class="card-title">Resolved</h5>
+                            <h5 class="card-title">حل شده</h5>
                             <h2>@reportStats.ResolvedTickets</h2>
                         </div>
                     </div>
@@ -154,15 +154,15 @@
                 <div class="col-md-3">
                     <div class="card text-white bg-info">
                         <div class="card-body">
-                            <h5 class="card-title">Avg Resolution Time</h5>
-                            <h2>@reportStats.AverageResolutionHours.ToString("F1")h</h2>
+                            <h5 class="card-title">میانگین زمان حل</h5>
+                            <h2>@reportStats.AverageResolutionHours.ToString("F1")ساعت</h2>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card text-white bg-warning">
                         <div class="card-body">
-                            <h5 class="card-title">Active Agents</h5>
+                            <h5 class="card-title">کارشناسان فعال</h5>
                             <h2>@reportStats.ActiveAgents</h2>
                         </div>
                     </div>
@@ -175,15 +175,15 @@
                     <div class="col">
                         <div class="card">
                             <div class="card-body">
-                                <h5 class="card-title">Agent Performance</h5>
+                                <h5 class="card-title">عملکرد کارشناسان</h5>
                                 <div class="table-responsive">
                                     <table class="table">
                                         <thead>
                                             <tr>
-                                                <th>Agent</th>
-                                                <th>Tickets Closed</th>
-                                                <th>Avg Resolution Time</th>
-                                                <th>Performance</th>
+                                                <th>کارشناس</th>
+                                                <th>تیکت‌های بسته شده</th>
+                                                <th>میانگین زمان حل</th>
+                                                <th>عملکرد</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -318,20 +318,51 @@
                 .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();
 
-            var excelData = GenerateExcelReport(tickets);
+            Console.WriteLine($"Generating Excel report for {tickets.Count} tickets...");
+            
+            byte[] excelData;
+            try
+            {
+                excelData = GenerateExcelReport(tickets);
+                Console.WriteLine($"Excel data generated successfully, size: {excelData.Length} bytes");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error generating Excel data: {ex.Message}");
+                throw;
+            }
             
             // Download the file
-            await JSRuntime.InvokeVoidAsync("downloadFile", 
-                "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + Convert.ToBase64String(excelData),
-                $"TicketReport_{fromDateJalali.Replace("/", "")}_to_{toDateJalali.Replace("/", "")}.xlsx");
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("downloadFile", 
+                    "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + Convert.ToBase64String(excelData),
+                    $"TicketReport_{fromDateJalali.Replace("/", "")}_to_{toDateJalali.Replace("/", "")}.xlsx");
+                
+                Console.WriteLine("File download initiated successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initiating file download: {ex.Message}");
+                throw;
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error generating report: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            // TODO: Show user-friendly error message
         }
         finally
         {
             isGenerating = false;
+            
+            // Force garbage collection after report generation
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            
+            Console.WriteLine("Report generation completed, memory cleaned up");
         }
     }
 
@@ -370,56 +401,96 @@
     {
         ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
         
-        using var package = new ExcelPackage();
-        var worksheet = package.Workbook.Worksheets.Add("Ticket Report");
-
-        // Headers
-        worksheet.Cells[1, 1].Value = "Ticket ID";
-        worksheet.Cells[1, 2].Value = "Title";
-        worksheet.Cells[1, 3].Value = "Status";
-        worksheet.Cells[1, 4].Value = "Priority";
-        worksheet.Cells[1, 5].Value = "Created Date";
-        worksheet.Cells[1, 6].Value = "Resolved Date";
-        worksheet.Cells[1, 7].Value = "Resolution Time (Hours)";
-        worksheet.Cells[1, 8].Value = "Created By";
-        worksheet.Cells[1, 9].Value = "Assigned To";
-        worksheet.Cells[1, 10].Value = "Department";
-
-        // Data
-        int row = 2;
-        foreach (var ticket in tickets)
+        try
         {
-            worksheet.Cells[row, 1].Value = ticket.Id;
-            worksheet.Cells[row, 2].Value = ticket.Title;
-            worksheet.Cells[row, 3].Value = ticket.Status.ToString();
-            worksheet.Cells[row, 4].Value = ticket.Priority.ToString();
-            worksheet.Cells[row, 5].Value = ticket.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
-            worksheet.Cells[row, 6].Value = ticket.ResolvedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
-            
-            if (ticket.ResolvedAt.HasValue)
+            using var package = new ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add("گزارش تیکت‌ها");
+
+            // Headers
+            worksheet.Cells[1, 1].Value = "شناسه تیکت";
+            worksheet.Cells[1, 2].Value = "عنوان";
+            worksheet.Cells[1, 3].Value = "وضعیت";
+            worksheet.Cells[1, 4].Value = "اولویت";
+            worksheet.Cells[1, 5].Value = "تاریخ ایجاد";
+            worksheet.Cells[1, 6].Value = "تاریخ حل";
+            worksheet.Cells[1, 7].Value = "زمان حل (ساعت)";
+            worksheet.Cells[1, 8].Value = "ایجاد شده توسط";
+            worksheet.Cells[1, 9].Value = "تخصیص یافته به";
+            worksheet.Cells[1, 10].Value = "بخش";
+
+            // Data
+            int row = 2;
+            foreach (var ticket in tickets)
             {
-                worksheet.Cells[row, 7].Value = (ticket.ResolvedAt.Value - ticket.CreatedAt).TotalHours;
+                try
+                {
+                    worksheet.Cells[row, 1].Value = ticket.Id;
+                    worksheet.Cells[row, 2].Value = ticket.Title ?? "";
+                    worksheet.Cells[row, 3].Value = ticket.Status.ToString();
+                    worksheet.Cells[row, 4].Value = ticket.Priority.ToString();
+                    worksheet.Cells[row, 5].Value = ticket.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                    worksheet.Cells[row, 6].Value = ticket.ResolvedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
+                    
+                    if (ticket.ResolvedAt.HasValue)
+                    {
+                        worksheet.Cells[row, 7].Value = Math.Round((ticket.ResolvedAt.Value - ticket.CreatedAt).TotalHours, 2);
+                    }
+                    else
+                    {
+                        worksheet.Cells[row, 7].Value = "";
+                    }
+                    
+                    worksheet.Cells[row, 8].Value = $"{ticket.CreatedBy?.FirstName ?? ""} {ticket.CreatedBy?.LastName ?? ""}".Trim();
+                    worksheet.Cells[row, 9].Value = $"{ticket.AssignedTo?.FirstName ?? ""} {ticket.AssignedTo?.LastName ?? ""}".Trim();
+                    worksheet.Cells[row, 10].Value = ticket.CreatedBy?.Department ?? "";
+                    
+                    row++;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error processing ticket {ticket.Id}: {ex.Message}");
+                    // Continue with next ticket rather than failing completely
+                }
             }
+
+            // Auto-fit columns with error handling
+            try
+            {
+                worksheet.Cells.AutoFitColumns();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error auto-fitting columns: {ex.Message}");
+            }
+
+            // Format headers with error handling
+            try
+            {
+                using var range = worksheet.Cells[1, 1, 1, 10];
+                range.Style.Font.Bold = true;
+                range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error formatting headers: {ex.Message}");
+            }
+
+            // Convert to byte array with proper memory management
+            var result = package.GetAsByteArray();
             
-            worksheet.Cells[row, 8].Value = $"{ticket.CreatedBy?.FirstName} {ticket.CreatedBy?.LastName}";
-            worksheet.Cells[row, 9].Value = $"{ticket.AssignedTo?.FirstName} {ticket.AssignedTo?.LastName}";
-            worksheet.Cells[row, 10].Value = ticket.CreatedBy?.Department ?? "";
+            // Force garbage collection to free memory immediately
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
             
-            row++;
+            return result;
         }
-
-        // Auto-fit columns
-        worksheet.Cells.AutoFitColumns();
-
-        // Format headers
-        using (var range = worksheet.Cells[1, 1, 1, 10])
+        catch (Exception ex)
         {
-            range.Style.Font.Bold = true;
-            range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-            range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+            Console.WriteLine($"Fatal error generating Excel report: {ex.Message}");
+            throw;
         }
-
-        return package.GetAsByteArray();
     }
 
     private string GetResolutionTime(Ticket ticket)

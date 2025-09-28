@@ -1,51 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap');
-
 html, body {
-    font-family: 'Vazirmatn', 'Tahoma', Arial, sans-serif;
-    direction: rtl;
-    text-align: right;
-}
-
-/* English content override */
-.ltr {
-    direction: ltr;
-    text-align: left;
-}
-
-/* RTL-specific adjustments */
-.sidebar {
-    right: 0;
-    left: auto;
-}
-
-.top-row {
-    justify-content: flex-start;
-}
-
-.top-row ::deep a, .top-row ::deep .btn-link {
-    margin-right: 1.5rem;
-    margin-left: 0;
-}
-
-.content {
-    padding-right: 2rem;
-    padding-left: 1.5rem;
-}
-
-/* Bootstrap RTL adjustments */
-.breadcrumb-item + .breadcrumb-item::before {
-    content: "\\";
-    padding-right: 0.5rem;
-    padding-left: 0;
-}
-
-/* Form adjustments for RTL */
-.form-label {
-    text-align: right;
-}
-
-.btn {
-    text-align: center;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 a, .btn-link {
@@ -89,7 +43,7 @@ h1:focus {
 }
 
     .blazor-error-boundary::after {
-        content: "خطایی رخ داده است.";
+        content: "An error has occurred."
     }
 
 .darker-border-checkbox.form-check-input {
